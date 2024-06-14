@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>誰先開始？</title>
+    <title>誰先洗澡？</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,16 +23,24 @@
         .spin {
             transform: rotate(360deg);
         }
-        .bounce {
-            animation: bounce 1s infinite;
+        @keyframes roll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
         }
-        @keyframes bounce {
-            0%, 100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-20px);
-            }
+        .roller {
+            font-size: 24px;
+            height: 50px;
+            overflow: hidden;
+            border: 2px solid #ccc;
+            margin: 20px 0;
+            position: relative;
+            text-align: center;
+        }
+        .roller-content {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            animation: roll 3s infinite;
         }
     </style>
 </head>
@@ -52,10 +60,20 @@
         <div class="grid">
             <section>
                 <hgroup>
-                    <h2>誰先開始？</h2>
-                    <h3>點擊按鈕來決定誰先開始</h3>
+                    <h2>誰先洗澡？</h2>
+                    <h3>點擊按鈕來決定誰先洗澡</h3>
                 </hgroup>
                 <button onclick="whoGoesFirst()">點擊</button>
+                <div class="roller" id="roller">
+                    <div class="roller-content" id="roller-content">
+                        <div>Rebecca</div>
+                        <div>Elaine</div>
+                        <div>Rachel</div>
+                        <div>Rebecca</div>
+                        <div>Elaine</div>
+                        <div>Rachel</div>
+                    </div>
+                </div>
                 <div class="result" id="result"></div>
             </section>
         </div>
@@ -68,20 +86,22 @@
     <script>
         function whoGoesFirst() {
             const names = ["Rebecca", "Elaine", "Rachel"];
-            const randomName = names[Math.floor(Math.random() * names.length)];
             const resultDiv = document.getElementById("result");
+            const rollerContent = document.getElementById("roller-content");
 
-            // 設置隨機背景顏色
-            const colors = ["#FFADAD", "#FFD6A5", "#FDFFB6", "#CAFFBF", "#9BF6FF", "#A0C4FF", "#BDB2FF", "#FFC6FF"];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            document.body.style.backgroundColor = randomColor;
+            // 清空結果並重置滾動內容
+            resultDiv.textContent = "";
+            rollerContent.style.animation = "none";
+            
+            // 強制重繪以應用新的動畫
+            rollerContent.offsetHeight; 
+            rollerContent.style.animation = "roll 3s cubic-bezier(.68,-0.55,.27,1.55)";
 
-            // 設置隨機動畫效果
-            const effects = ["spin", "bounce"];
-            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
-            resultDiv.className = "result " + randomEffect;
-
-            resultDiv.textContent = `${randomName}, you get to go first!`;
+            // 在滾動結束時設置最終結果
+            setTimeout(() => {
+                const randomName = names[Math.floor(Math.random() * names.length)];
+                resultDiv.textContent = `${randomName}, 你先去洗澡！`;
+            }, 3000); // 與動畫時間匹配
         }
     </script>
 </body>
