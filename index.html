@@ -20,13 +20,6 @@
             margin-top: 20px;
             transition: transform 1s;
         }
-        .spin {
-            transform: rotate(360deg);
-        }
-        @keyframes roll {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-100%); }
-        }
         .roller {
             font-size: 24px;
             height: 50px;
@@ -40,7 +33,18 @@
             position: absolute;
             top: 0;
             width: 100%;
-            animation: roll 3s infinite;
+            display: flex;
+            flex-direction: column;
+        }
+        .roller-item {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes roll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-300%); }
         }
     </style>
 </head>
@@ -66,12 +70,12 @@
                 <button onclick="whoGoesFirst()">點擊</button>
                 <div class="roller" id="roller">
                     <div class="roller-content" id="roller-content">
-                        <div>Rebecca</div>
-                        <div>Elaine</div>
-                        <div>Rachel</div>
-                        <div>Rebecca</div>
-                        <div>Elaine</div>
-                        <div>Rachel</div>
+                        <div class="roller-item">Rebecca</div>
+                        <div class="roller-item">Elaine</div>
+                        <div class="roller-item">Rachel</div>
+                        <div class="roller-item">Rebecca</div>
+                        <div class="roller-item">Elaine</div>
+                        <div class="roller-item">Rachel</div>
                     </div>
                 </div>
                 <div class="result" id="result"></div>
@@ -91,11 +95,14 @@
 
             // 清空結果並重置滾動內容
             resultDiv.textContent = "";
-            rollerContent.style.animation = "none";
-            
+            rollerContent.style.transition = "none";
+            rollerContent.style.transform = "translateY(0)";
+
             // 強制重繪以應用新的動畫
-            rollerContent.offsetHeight; 
-            rollerContent.style.animation = "roll 3s cubic-bezier(.68,-0.55,.27,1.55)";
+            setTimeout(() => {
+                rollerContent.style.transition = "transform 3s cubic-bezier(.68,-0.55,.27,1.55)";
+                rollerContent.style.transform = "translateY(-300%)";
+            }, 0);
 
             // 在滾動結束時設置最終結果
             setTimeout(() => {
