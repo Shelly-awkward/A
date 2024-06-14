@@ -11,10 +11,28 @@
     <meta name="apple-mobile-web-app-title" content="Go First Selector">
     <link rel="apple-touch-icon" href="icon.png">
     <style>
+        body {
+            transition: background-color 1s;
+        }
         .result {
             font-size: 24px;
             text-align: center;
             margin-top: 20px;
+            transition: transform 1s;
+        }
+        .spin {
+            transform: rotate(360deg);
+        }
+        .bounce {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
         }
     </style>
 </head>
@@ -51,7 +69,19 @@
         function whoGoesFirst() {
             const names = ["Rebecca", "Elaine", "Rachel"];
             const randomName = names[Math.floor(Math.random() * names.length)];
-            document.getElementById("result").textContent = `${randomName}, you get to go first!`;
+            const resultDiv = document.getElementById("result");
+
+            // 設置隨機背景顏色
+            const colors = ["#FFADAD", "#FFD6A5", "#FDFFB6", "#CAFFBF", "#9BF6FF", "#A0C4FF", "#BDB2FF", "#FFC6FF"];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.body.style.backgroundColor = randomColor;
+
+            // 設置隨機動畫效果
+            const effects = ["spin", "bounce"];
+            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+            resultDiv.className = "result " + randomEffect;
+
+            resultDiv.textContent = `${randomName}, you get to go first!`;
         }
     </script>
 </body>
