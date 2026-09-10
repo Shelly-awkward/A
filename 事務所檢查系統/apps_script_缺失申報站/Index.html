@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>缺失申報站</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --ground: #eef1ec;
+    --surface: #ffffff;
+    --surface-2: #f6f7f3;
+    --ink: #1b2a33;
+    --ink-soft: #5c6e74;
+    --ink-faint: #8a9a97;
+    --accent: #2c6e6f;
+    --accent-ink: #ffffff;
+    --accent-soft: #dce9e8;
+    --line: #d7dbd3;
+    --good: #2f7d4f;
+    --good-soft: #dcefe2;
+    --warn: #a06a12;
+    --warn-soft: #f3e6cb;
+    --critical: #a83636;
+    --critical-soft: #f6dede;
+    --shadow: 0 1px 2px rgba(27,42,51,.06), 0 8px 24px -12px rgba(27,42,51,.18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); }
+  body {
+    color: var(--ink);
+    font-family: "Noto Sans TC", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Noto Serif TC", "Segoe UI", serif; font-weight: 700; margin: 0; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  a { color: var(--accent); }
+
+  .shell { max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  header.top {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    flex-wrap: wrap; margin-bottom: 22px;
+  }
+  .brand { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600;
+  }
+  header.top h1 { font-size: 26px; }
+  .subtitle { color: var(--ink-soft); font-size: 14px; max-width: 46ch; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 2px; min-width: 108px;
+  }
+  .tile .n { font-family: "IBM Plex Mono", monospace; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .lbl { font-size: 12px; color: var(--ink-soft); }
+  .tile.accent .n { color: var(--accent); }
+
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card-pad { padding: 20px; }
+
+  .form-card { position: sticky; top: 20px; }
+  @media (max-width: 920px) { .form-card { position: static; } }
+
+  .card h2 { font-size: 16px; margin-bottom: 4px; }
+  .card .hint { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+
+  form { display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+  .field .req { color: var(--critical); margin-left: 2px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  input[type=text], input[type=date], select, textarea {
+    width: 100%; font: inherit; font-size: 14px; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 10px; transition: border-color .15s;
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-faint); }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
+  select:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    flex: 1; border: none; background: var(--surface-2); color: var(--ink-soft);
+    font: inherit; font-size: 13px; font-weight: 600; padding: 9px 6px; cursor: pointer;
+    border-right: 1px solid var(--line);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .sub-note {
+    font-size: 12px; color: var(--ink-faint); background: var(--surface-2);
+    border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+
+  button.primary {
+    font: inherit; font-weight: 700; font-size: 14px; letter-spacing: .01em;
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 9px;
+    padding: 11px 16px; cursor: pointer; margin-top: 4px;
+  }
+  button.primary:hover { filter: brightness(1.06); }
+  button.primary:disabled { opacity: .6; cursor: wait; }
+  button.ghost {
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--ink-faint); color: var(--ink); }
+
+  .status-msg { font-size: 12.5px; min-height: 16px; }
+  .status-msg.ok { color: var(--good); }
+  .status-msg.err { color: var(--critical); }
+
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 0; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button {
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+    background: transparent; border: none; padding: 8px 4px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel-actions { display: flex; gap: 8px; align-items: center; }
+  .panel-actions select { width: auto; min-width: 92px; padding: 7px 8px; font-size: 13px; }
+
+  .tabpanel { padding: 16px 20px 20px; }
+  .tabpanel[hidden] { display: none; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
+  thead th {
+    text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-soft); background: var(--surface-2); padding: 9px 10px;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.wrap { white-space: pre-wrap; max-width: 320px; }
+  td.num { font-family: "IBM Plex Mono", monospace; text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .badge.case { background: var(--accent-soft); color: var(--accent); }
+  .badge.qc { background: var(--warn-soft); color: var(--warn); }
+
+  .row-del {
+    font: inherit; font-size: 11.5px; font-weight: 700; color: var(--critical);
+    background: var(--critical-soft); border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer;
+  }
+  .row-del:hover { filter: brightness(.95); }
+
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 13.5px; padding: 40px 20px; }
+
+  .agg-section + .agg-section { margin-top: 22px; }
+  .agg-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; }
+  .agg-title .agg-note { font-size: 11.5px; font-weight: 400; color: var(--ink-faint); }
+
+  footer.meta {
+    margin-top: 28px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    font-size: 12px; color: var(--ink-faint);
+  }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translate(-50%, 12px);
+    background: var(--ink); color: var(--ground); font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border-radius: 999px; box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">金管會證期局・會計審計組</div>
+      <h1>缺失申報站</h1>
+      <div class="subtitle">主查同仁於檢查後即時登錄個案缺失，資料直接寫入本試算表，供編製監理報告及後續填覆 IFIAR 問卷彙總使用。</div>
+    </div>
+    <div class="tiles">
+      <div class="tile accent"><span class="n mono" id="tileTotal">0</span><span class="lbl">缺失總筆數</span></div>
+      <div class="tile"><span class="n mono" id="tileCase">0</span><span class="lbl">審計個案缺失</span></div>
+      <div class="tile"><span class="n mono" id="tileQc">0</span><span class="lbl">品質管理缺失</span></div>
+      <div class="tile"><span class="n mono" id="tileCompanies">0</span><span class="lbl">涉及個案家數</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <div class="card form-card">
+      <div class="card-pad">
+        <h2>新增缺失紀錄</h2>
+        <div class="hint">欄位對應 IFIAR Part I / Part III / Part IV 分類，子類別會依所選主題自動連動，避免歸類錯誤。</div>
+
+        <form id="findingForm">
+          <div class="row2">
+            <div class="field">
+              <label for="yearSelect">檢查年度 <span class="req">*</span></label>
+              <select id="yearSelect" required></select>
+            </div>
+            <div class="field">
+              <label>缺失類型 <span class="req">*</span></label>
+              <div class="seg" id="typeSeg" role="group" aria-label="缺失類型">
+                <button type="button" data-val="審計個案缺失" aria-pressed="true">審計個案</button>
+                <button type="button" data-val="品質管理缺失" aria-pressed="false">品質管理</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="themeSelect">主題（Part I / Part III） <span class="req">*</span></label>
+            <select id="themeSelect" required></select>
+          </div>
+
+          <div class="field" id="subField">
+            <label for="subSelect">缺失子類別（Part IV）</label>
+            <select id="subSelect"></select>
+            <div class="sub-note" id="subNote" hidden>此主題於 Part IV 未設子類別，將自動記為「此項缺失無子類別」。</div>
+          </div>
+
+          <div class="field" id="otherField" hidden>
+            <label for="otherText">「其他」說明 <span class="req">*</span></label>
+            <input type="text" id="otherText" placeholder="簡述缺失性質，供填列 Part IV Other 說明欄" />
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label for="firmInput">事務所 <span class="req">*</span></label>
+              <input type="text" id="firmInput" list="firmList" placeholder="例：勤業" required />
+              <datalist id="firmList">
+                <option value="勤業"></option><option value="安侯"></option>
+                <option value="資誠"></option><option value="安永"></option>
+                <option value="立本"></option><option value="正大"></option>
+              </datalist>
+            </div>
+            <div class="field">
+              <label for="codeInput">受查公司代號</label>
+              <input type="text" id="codeInput" placeholder="例：1417" />
+            </div>
+          </div>
+
+          <div class="field" id="companyField">
+            <label for="companyInput">受查公司 <span class="req">*</span></label>
+            <input type="text" id="companyInput" placeholder="例：嘉裕" required />
+          </div>
+
+          <div class="field">
+            <label for="contentInput">缺失內容 <span class="req">*</span></label>
+            <textarea id="contentInput" placeholder="具體描述缺失事實及所違反之準則／法規條文" required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="localCatInput">金管會分類（選填）</label>
+            <input type="text" id="localCatInput" placeholder="例：內部控制測試、證實性分析程序…" />
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label for="handlerInput">承辦同仁 <span class="req">*</span></label>
+              <input type="text" id="handlerInput" placeholder="檢查工作承辦人" required />
+            </div>
+            <div class="field">
+              <label for="fillerSelect">填表人 <span class="req">*</span></label>
+              <select id="fillerSelect" required></select>
+            </div>
+          </div>
+
+          <button type="submit" class="primary">送出紀錄</button>
+          <div class="status-msg" id="formStatus"></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="panel-head">
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-tab="list">缺失清單</button>
+          <button role="tab" aria-selected="false" data-tab="agg">統計彙總</button>
+        </div>
+        <div class="panel-actions">
+          <select id="yearFilter" aria-label="篩選檢查年度"></select>
+          <button class="ghost" id="refreshBtn">重新整理</button>
+          <button class="ghost" id="exportBtn">匯出 CSV</button>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-list">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>年度</th><th>類型</th><th>主題</th><th>子類別</th><th>事務所</th><th>受查公司</th>
+                <th>承辦</th><th>缺失內容</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="listEmpty" hidden>尚無紀錄。左側表單送出後，所有使用者重新整理即可看到最新清單。</div>
+      </div>
+
+      <div class="tabpanel" id="tab-agg" hidden>
+        <div class="agg-section">
+          <div class="agg-title">一、依事務所統計<span class="agg-note">對應 Overall Stats「各事務所有缺失個案數」</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>事務所</th><th class="num">有缺失個案家數</th><th class="num">缺失件數</th></tr></thead>
+            <tbody id="aggFirmBody"></tbody>
+          </table></div>
+        </div>
+        <div class="agg-section">
+          <div class="agg-title">二、依 Part I / Part III 主題統計<span class="agg-note">對應問卷 Part I／Part III 各列 B／D／E 欄</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>主題</th><th class="num">有缺失事務所家數</th><th class="num">有缺失個案家數</th><th class="num">缺失件數</th></tr></thead>
+            <tbody id="aggThemeBody"></tbody>
+          </table></div>
+        </div>
+        <div class="agg-section">
+          <div class="agg-title">三、依主題 × Part IV 子類別統計<span class="agg-note">對應問卷 Part IV 各子類別欄</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>主題</th><th>子類別</th><th class="num">件數</th></tr></thead>
+            <tbody id="aggSubBody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="meta">
+    <span>資料直接寫入綁定試算表的「findings」分頁；多人可同時填寫，送出時以鎖定機制避免互相覆蓋。按「重新整理」看到他人最新送出的紀錄。</span>
+    <span id="syncState">載入中…</span>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var NO_SUB = "此項缺失無子類別";
+
+  var PART_I = [
+    { code:"01", en:"Group Audits", zh:"集團審計",
+      subs:["未擬訂集團查核計畫(如查核範圍之決定)及／或未適當與組成個體查核人員溝通指示",
+            "未適當計算集團及相關組成個體查核之重大性",
+            "未充分考量參與組成個體查核人員工作之性質、時間及範圍(包括複核之證據)",
+            "未適當解決組成個體查核人員所辨認之問題","其他"] },
+    { code:"02", en:"Internal Control Testing", zh:"內部控制測試",
+      subs:["未適當評估信賴他人工作(如內部稽核)之適當性，或未充分考量信賴之程度",
+            "未因控制無效(包括查核調整及證實測試發現之例外事項所顯示者)而適當調整測試",
+            "未充分測試資訊科技一般控制及應用控制",
+            "未取得足夠具說服力之證據以支持對人工控制之信賴",
+            "未充分評估控制缺失之嚴重性",
+            "未充分測試資料或管理階層報告之正確性及完整性","其他"] },
+    { code:"03", en:"Adequacy of Financial Statement Presentation and Disclosures", zh:"財務報表表達與揭露之妥適性",
+      subs:["未充分考量財務報表附註揭露之允當性(不含部門別資訊)",
+            "未評估及測試部門別資訊之表達",
+            "未辨認或評估財務報表分類或表達之適當性(包括現金流量表)","其他"] },
+    { code:"04", en:"Use of Experts/Specialists", zh:"採用其他專家意見", subs:null },
+    { code:"05", en:"Substantive Analytical Procedures", zh:"證實性分析程序", subs:null },
+    { code:"06", en:"Audit Committee Communication", zh:"與審計委員會之溝通", subs:null },
+    { code:"07", en:"Fraud Procedures", zh:"舞弊查核程序", subs:null },
+    { code:"08", en:"Risk Assessment", zh:"風險評估", subs:null },
+    { code:"09", en:"Audit Report", zh:"查核報告", subs:null },
+    { code:"10", en:"Accounting Estimates, including Fair Value Measurement", zh:"會計估計（含公允價值衡量）",
+      subs:["未執行足夠之風險評估程序，包括瞭解及考量所採用方法之適當性",
+            "未適當考量偏頗之跡象，包括會計估計或其估計方法較前期變動之適當性",
+            "測試管理階層如何作成會計估計時，未充分測試所用資料之正確性",
+            "測試會計估計時，未評估假設之合理性或是否有反面證據",
+            "以發展特定估計數或區間評估管理階層估計之合理性時，未考量攸關變數及／或未發展足夠窄之區間",
+            "於重大風險情況下，未評估管理階層如何考量替代假設及其否決原因、如何處理估計不確定性、假設之合理性，暨管理階層執行特定行動方案之意圖及能力",
+            "其他"] },
+    { code:"11", en:"Revenue Recognition", zh:"收入認列",
+      subs:["未充分瞭解複雜交易安排之條款及條件暨其對會計處理之影響",
+            "未執行程序以確定收入是否記錄於適當期間",
+            "未適當評估及回應收入認列之舞弊風險","其他"] },
+    { code:"12", en:"Inventory Procedures", zh:"存貨", subs:null },
+    { code:"13", en:"Related Party Transactions", zh:"關係人交易", subs:null },
+    { code:"14", en:'Engagement Quality Reviewers ("EQR")', zh:"案件品質管制複核（EQR）", subs:null },
+    { code:"15", en:"Going Concern", zh:"繼續經營假設", subs:null },
+    { code:"16", en:"Adequacy of Review and Supervision", zh:"複核及督導之適當性", subs:null },
+    { code:"17", en:"Audit Sampling", zh:"審計抽樣",
+      subs:["樣本量不足以將抽樣風險降低至可接受之低水準",
+            "選取之測試樣本有偏頗及／或不能代表母體",
+            "未設計適當程序以達成測試目的，及／或必要時未執行合適之替代程序",
+            "未調查偏差之性質及原因，並將不實表達推估至母體","其他"] },
+    { code:"—", en:"(2026 Survey Part I no corresponding theme)", zh:"（2026 Survey Part I無對應主題）",
+      label:"底稿記載缺失（無對應IFIAR）", subs:null }
+  ];
+
+  var PART_III = [
+    { code:"III-1", en:"Risk Assessment Process", zh:"風險評估流程", subs:null },
+    { code:"III-2", en:"Governance and Leadership [Leadership Responsibilities for Quality within the Firm]", zh:"治理與領導（事務所內品質之領導責任）",
+      subs:["事務所領導階層未展現組織之核心價值",
+            "事務所領導階層未定期溝通正面價值及行為之範例與展現",
+            "事務所領導階層未將高審計品質列為事務所不可妥協之主要目標","其他"] },
+    { code:"III-3", en:"Relevant Ethical Requirements [Independence and Ethical Requirements]", zh:"相關道德規範（獨立性與道德規範）",
+      subs:["未有效監控事務所員工及合夥人個人之獨立性",
+            "未向審計委員會溝通依事務所專業判斷攸關獨立性之特定關係",
+            "未考量及評估對發行人提供之非審計及／或審計相關服務",
+            "未適當考量適用之事務所或合夥人輪調規定",
+            "因存在財務關係致未能維持獨立性，包括未適當處理該等情況對事務所獨立性之減損",
+            "因查核案件成員與前受查客戶建立僱傭關係致未能維持獨立性(例如違反冷卻期規定)",
+            "因專業服務約定期間存在商業關係致未能維持獨立性",
+            "未建立可靠系統以追蹤商業關係、事務所財務利益及集團企業架構，及／或未持續更新相關資訊","其他"] },
+    { code:"III-4", en:"Acceptance and Continuance of Client Relationships [Client Risk Assessment, Acceptance and Continuance]", zh:"客戶關係之承接與續任",
+      subs:["未執行足夠程序及／或取得可靠資訊以客觀評估新客戶之誠信",
+            "風險評估流程未於委任書出具日及／或外勤工作日前完成",
+            "續任評估未考量本期或前期案件所發生之重大事項",
+            "於事務所欠缺具必要經驗及技能人員之產業承接案件",
+            "辨認實際或可能利益衝突或獨立性議題之程序及系統有缺失(包括所用資料庫可靠性／更新之缺失)",
+            "未處理實際或可能之利益衝突或獨立性議題",
+            "未評估新客戶、新服務或特定情況下受託服務之案件風險",
+            "風險評估為高時未諮詢風險管理職能或相當單位",
+            "未至少每年評估案件之承接或續任",
+            "未建立監控個人及事務所獨立性或商業關係之程序","其他"] },
+    { code:"III-5a", en:"Resources - Human Resources", zh:"資源－人力資源",
+      subs:["案件團隊之指派(例如專業能力及專精知識)",
+            "事務所訓練及學習計畫之遵循",
+            "將審計品質納入合夥人績效評估及晉升之考量",
+            "審計品質缺失對合夥人酬勞及案件指派之影響",
+            "執行高品質案件之時間不足(例如合夥人或員工工作負荷)","其他"] },
+    { code:"III-5b", en:"Resources - Technological, Intellectual, Service Providers", zh:"資源－科技、智慧、服務提供者", subs:null },
+    { code:"III-6", en:"Engagement Performance", zh:"案件執行",
+      subs:["諮詢","未訂定及／或未執行足夠、及時之案件督導及複核政策及程序",
+            "查核方法及指引(例如證實分析性複核、抽樣或會計估計查核之程序)",
+            "最終查核檔案之歸檔／彙整","其他"] },
+    { code:"III-7", en:"Information and Communication", zh:"資訊與溝通", subs:null },
+    { code:"III-8", en:"Monitoring and Remediation Process [Monitoring]", zh:"監控與矯正流程",
+      subs:["執行內部檢查時未能辨認查核執行問題，致無法有效監控審計品質及回應可能之系統性缺失",
+            "未有效設計及執行報告核發前複核以監控改正措施之有效性",
+            "根本原因分析／改正措施之缺失","其他"] },
+    { code:"III-9", en:"Engagement Quality Reviews (ISQM 2)", zh:"專案品質覆核（ISQM 2）",
+      subs:["未訂定案件品質複核(EQR)政策及程序，以客觀評估查核團隊之重大判斷及所作成之結論",
+            "未依事務所或其他適用政策及時執行案件品質複核",
+            "案件品質複核之深度／範圍不足","其他"] }
+  ];
+
+  var THEME_SETS = { "審計個案缺失": PART_I, "品質管理缺失": PART_III };
+
+  var state = { type: "審計個案缺失", records: [], yearFilter: "all" };
+  var els = {};
+  ["yearSelect","yearFilter","themeSelect","subField","subSelect","subNote","otherField","otherText",
+   "firmInput","codeInput","companyInput","contentInput","localCatInput",
+   "handlerInput","fillerSelect","findingForm","formStatus",
+   "listBody","listEmpty","aggFirmBody","aggThemeBody","aggSubBody",
+   "tileTotal","tileCase","tileQc","tileCompanies","syncState","exportBtn","refreshBtn"
+  ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+  var CURRENT_ROC_YEAR = new Date().getFullYear() - 1911;
+  function populateYearSelect() {
+    var opts = [];
+    for (var y = CURRENT_ROC_YEAR + 1; y >= CURRENT_ROC_YEAR - 8; y--) opts.push(y);
+    var saved = (function () { try { return localStorage.getItem("findingIntake.year"); } catch (e) { return null; } })();
+    els.yearSelect.innerHTML = opts.map(function (y) { return '<option value="' + y + '">' + y + "年</option>"; }).join("");
+    els.yearSelect.value = (saved && opts.indexOf(Number(saved)) !== -1) ? saved : String(CURRENT_ROC_YEAR);
+  }
+  els.yearSelect.addEventListener("change", function () {
+    try { localStorage.setItem("findingIntake.year", els.yearSelect.value); } catch (e) {}
+  });
+  populateYearSelect();
+
+  function refreshYearFilterOptions() {
+    var years = Array.from(new Set(state.records.map(function (r) { return r.year; }).filter(Boolean)))
+      .sort(function (a, b) { return b - a; });
+    var prev = els.yearFilter.value || state.yearFilter;
+    els.yearFilter.innerHTML = '<option value="all">全部年度</option>' +
+      years.map(function (y) { return '<option value="' + y + '">' + y + "年</option>"; }).join("");
+    els.yearFilter.value = (prev && (prev === "all" || years.indexOf(Number(prev)) !== -1)) ? prev : "all";
+    state.yearFilter = els.yearFilter.value;
+  }
+  els.yearFilter.addEventListener("change", function () {
+    state.yearFilter = els.yearFilter.value;
+    render();
+  });
+  function visibleRecords() {
+    if (state.yearFilter === "all") return state.records;
+    return state.records.filter(function (r) { return String(r.year) === String(state.yearFilter); });
+  }
+
+  function currentThemeList() { return THEME_SETS[state.type]; }
+  function findTheme(zh) { return currentThemeList().filter(function (t) { return t.zh === zh; })[0]; }
+
+  function populateThemeSelect() {
+    var list = currentThemeList();
+    els.themeSelect.innerHTML = list.map(function (t) {
+      var text = t.label ? t.label : (t.zh + '（' + t.en + '）');
+      return '<option value="' + escAttr(t.zh) + '">' + esc(text) + "</option>";
+    }).join("");
+    populateSubSelect();
+  }
+
+  function populateSubSelect() {
+    var theme = findTheme(els.themeSelect.value);
+    if (!theme || !theme.subs) {
+      els.subSelect.innerHTML = "";
+      els.subSelect.disabled = true;
+      els.subNote.hidden = false;
+      els.otherField.hidden = true;
+    } else {
+      els.subSelect.disabled = false;
+      els.subNote.hidden = true;
+      els.subSelect.innerHTML = theme.subs.map(function (s, i) {
+        var label = (i + 1) + "." + s;
+        return '<option value="' + escAttr(s) + '">' + esc(label) + "</option>";
+      }).join("");
+      toggleOther();
+    }
+  }
+  function toggleOther() {
+    var theme = findTheme(els.themeSelect.value);
+    var isOther = theme && theme.subs && els.subSelect.value === "其他";
+    els.otherField.hidden = !isOther;
+    if (!isOther) els.otherText.value = "";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function escAttr(s) { return esc(s); }
+
+  document.getElementById("typeSeg").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-val]");
+    if (!btn) return;
+    state.type = btn.getAttribute("data-val");
+    Array.prototype.forEach.call(this.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+    });
+    var isQc = state.type === "品質管理缺失";
+    els.companyInput.required = !isQc;
+    els.companyInput.placeholder = isQc ? "如為事務所整體層級可留空或填「（事務所層級）」" : "例：嘉裕";
+    populateThemeSelect();
+  });
+
+  els.themeSelect.addEventListener("change", populateSubSelect);
+  els.subSelect.addEventListener("change", toggleOther);
+
+  document.querySelectorAll('.tabs button[role="tab"]').forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll('.tabs button[role="tab"]').forEach(function (t) {
+        t.setAttribute("aria-selected", t === tab ? "true" : "false");
+      });
+      document.getElementById("tab-list").hidden = tab.dataset.tab !== "list";
+      document.getElementById("tab-agg").hidden = tab.dataset.tab !== "agg";
+    });
+  });
+
+  /* remembered handler name */
+  try {
+    var savedHandler = localStorage.getItem("findingIntake.handler");
+    if (savedHandler) els.handlerInput.value = savedHandler;
+  } catch (e) {}
+  els.handlerInput.addEventListener("change", function () {
+    try { localStorage.setItem("findingIntake.handler", els.handlerInput.value.trim()); } catch (e) {}
+  });
+
+  populateThemeSelect();
+
+  /* ---- roster (填表人 dropdown) ---- */
+  function loadRoster() {
+    google.script.run.withSuccessHandler(function (names) {
+      var list = (names && names.length) ? names : ["（名冊未設定，請洽管理員在 roster 分頁新增姓名）"];
+      var saved = (function () { try { return localStorage.getItem("findingIntake.filler"); } catch (e) { return null; } })();
+      els.fillerSelect.innerHTML = list.map(function (n) { return '<option value="' + escAttr(n) + '">' + esc(n) + "</option>"; }).join("");
+      if (saved && list.indexOf(saved) !== -1) els.fillerSelect.value = saved;
+    }).withFailureHandler(function () {
+      els.fillerSelect.innerHTML = '<option value="">（名冊載入失敗，請重新整理）</option>';
+    }).getRoster();
+  }
+  els.fillerSelect.addEventListener("change", function () {
+    try { localStorage.setItem("findingIntake.filler", els.fillerSelect.value); } catch (e) {}
+  });
+  loadRoster();
+
+  /* =========================================================
+     SERVER SYNC (google.script.run — no realtime push, so we
+     poll and also refresh right after this viewer's own writes)
+  ========================================================= */
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+  function setStatus(msg, cls) {
+    els.formStatus.textContent = msg;
+    els.formStatus.className = "status-msg" + (cls ? " " + cls : "");
+  }
+
+  var loading = false;
+  function loadAll(quiet) {
+    if (loading) return;
+    loading = true;
+    if (!quiet) els.syncState.textContent = "載入中…";
+    google.script.run.withSuccessHandler(function (records) {
+      loading = false;
+      state.records = records || [];
+      refreshYearFilterOptions();
+      render();
+      els.syncState.textContent = "已載入 " + state.records.length + " 筆紀錄 · " +
+        new Date().toLocaleTimeString("zh-TW", { hour12: false });
+    }).withFailureHandler(function (err) {
+      loading = false;
+      els.syncState.textContent = "載入失敗：" + (err && err.message ? err.message : err);
+    }).getAllFindings();
+  }
+  loadAll(false);
+  setInterval(function () { loadAll(true); }, 20000); // 每20秒背景刷新
+  els.refreshBtn.addEventListener("click", function () { loadAll(false); });
+
+  els.findingForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var theme = findTheme(els.themeSelect.value);
+    var hasSub = !!(theme && theme.subs);
+    var subValue = hasSub ? els.subSelect.value : NO_SUB;
+    if (hasSub && subValue === "其他" && !els.otherText.value.trim()) {
+      setStatus("已選「其他」，請填寫說明後再送出。", "err");
+      els.otherText.focus();
+      return;
+    }
+    if (state.type === "審計個案缺失" && !els.companyInput.value.trim()) {
+      setStatus("審計個案缺失需填寫受查公司。", "err");
+      els.companyInput.focus();
+      return;
+    }
+    if (!els.fillerSelect.value) {
+      setStatus("請選擇填表人。", "err");
+      return;
+    }
+
+    var record = {
+      year: Number(els.yearSelect.value),
+      type: state.type,
+      themeCode: theme.code,
+      themeEn: theme.en,
+      themeZh: theme.zh,
+      subZh: subValue,
+      subOther: (subValue === "其他") ? els.otherText.value.trim() : "",
+      firm: els.firmInput.value.trim(),
+      companyCode: els.codeInput.value.trim(),
+      company: els.companyInput.value.trim() || "（事務所層級）",
+      content: els.contentInput.value.trim(),
+      localCategory: els.localCatInput.value.trim(),
+      handler: els.handlerInput.value.trim(),
+      filler: els.fillerSelect.value
+    };
+
+    var btn = els.findingForm.querySelector("button.primary");
+    btn.disabled = true;
+    setStatus("送出中…");
+    google.script.run.withSuccessHandler(function (res) {
+      btn.disabled = false;
+      if (!res || !res.ok) { setStatus("送出失敗，請重試。", "err"); return; }
+      setStatus("已送出，已寫入試算表。", "ok");
+      showToast("紀錄已新增");
+      els.contentInput.value = "";
+      els.localCatInput.value = "";
+      els.otherText.value = "";
+      els.codeInput.value = "";
+      if (state.type === "審計個案缺失") els.companyInput.value = "";
+      els.contentInput.focus();
+      loadAll(true);
+    }).withFailureHandler(function (err) {
+      btn.disabled = false;
+      setStatus("送出失敗：" + (err && err.message ? err.message : err), "err");
+    }).submitFinding(record);
+  });
+
+  els.listBody.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-del]");
+    if (!btn) return;
+    if (!confirm("確定刪除這筆紀錄？此動作無法復原。")) return;
+    btn.disabled = true;
+    google.script.run.withSuccessHandler(function () {
+      showToast("紀錄已刪除");
+      loadAll(true);
+    }).withFailureHandler(function (err) {
+      showToast("刪除失敗：" + (err && err.message ? err.message : err));
+      btn.disabled = false;
+    }).deleteFinding(btn.getAttribute("data-del"));
+  });
+
+  function render() {
+    renderTiles();
+    renderList();
+    renderAggregates();
+  }
+
+  function renderTiles() {
+    var recs = visibleRecords();
+    var total = recs.length;
+    var caseCount = recs.filter(function (r) { return r.type === "審計個案缺失"; }).length;
+    var qcCount = total - caseCount;
+    var companies = new Set(
+      recs.filter(function (r) { return r.type === "審計個案缺失"; })
+        .map(function (r) { return r.firm + "｜" + r.company; })
+    );
+    els.tileTotal.textContent = total;
+    els.tileCase.textContent = caseCount;
+    els.tileQc.textContent = qcCount;
+    els.tileCompanies.textContent = companies.size;
+  }
+
+  function renderList() {
+    var recs = visibleRecords();
+    if (!recs.length) {
+      els.listBody.innerHTML = "";
+      els.listEmpty.hidden = false;
+      return;
+    }
+    els.listEmpty.hidden = true;
+    els.listBody.innerHTML = recs.map(function (r) {
+      var badge = r.type === "審計個案缺失"
+        ? '<span class="badge case">個案</span>' : '<span class="badge qc">品質</span>';
+      var sub = r.subZh === "其他" && r.subOther ? "其他：" + r.subOther : r.subZh;
+      return "<tr>" +
+        "<td class=\"mono\">" + esc(r.year || "") + "</td>" +
+        "<td>" + badge + "</td>" +
+        "<td>" + esc(r.themeCode) + " " + esc(r.themeZh) + "</td>" +
+        "<td class=\"wrap\">" + esc(sub || "") + "</td>" +
+        "<td>" + esc(r.firm || "") + "</td>" +
+        "<td>" + esc(r.company || "") + (r.companyCode ? " (" + esc(r.companyCode) + ")" : "") + "</td>" +
+        "<td>" + esc(r.handler || "") + "</td>" +
+        "<td class=\"wrap\">" + esc((r.content || "").slice(0, 90)) + ((r.content || "").length > 90 ? "…" : "") + "</td>" +
+        "<td><button class=\"row-del\" data-del=\"" + esc(r.id) + "\">刪除</button></td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function renderAggregates() {
+    var recs = visibleRecords();
+    var byFirm = {};
+    recs.forEach(function (r) {
+      var key = r.firm || "（未填）";
+      byFirm[key] = byFirm[key] || { companies: new Set(), count: 0 };
+      byFirm[key].count++;
+      if (r.type === "審計個案缺失") byFirm[key].companies.add(r.company);
+    });
+    var firmRows = Object.keys(byFirm).sort();
+    els.aggFirmBody.innerHTML = firmRows.length ? firmRows.map(function (f) {
+      var v = byFirm[f];
+      return "<tr><td>" + esc(f) + "</td><td class=\"num\">" + v.companies.size + "</td><td class=\"num\">" + v.count + "</td></tr>";
+    }).join("") + rowTotal(firmRows.reduce(function (a, f) { return a + byFirm[f].companies.size; }, 0),
+                            firmRows.reduce(function (a, f) { return a + byFirm[f].count; }, 0))
+      : emptyRow(3);
+
+    var byTheme = {};
+    var order = [];
+    recs.forEach(function (r) {
+      var key = r.type + "｜" + r.themeCode + "｜" + r.themeZh;
+      if (!byTheme[key]) { byTheme[key] = { firms: new Set(), companies: new Set(), count: 0 }; order.push(key); }
+      byTheme[key].firms.add(r.firm);
+      byTheme[key].companies.add(r.type === "審計個案缺失" ? r.company : r.firm + "｜" + r.company);
+      byTheme[key].count++;
+    });
+    els.aggThemeBody.innerHTML = order.length ? order.map(function (key) {
+      var parts = key.split("｜");
+      var v = byTheme[key];
+      return "<tr><td>" + esc(parts[1]) + " " + esc(parts[2]) + "</td><td class=\"num\">" + v.firms.size +
+        "</td><td class=\"num\">" + v.companies.size + "</td><td class=\"num\">" + v.count + "</td></tr>";
+    }).join("") + rowTotal(null, recs.length, 4)
+      : emptyRow(4);
+
+    var bySub = {};
+    var subOrder = [];
+    recs.forEach(function (r) {
+      var subLabel = r.subZh === "其他" && r.subOther ? "其他（" + r.subOther + "）" : (r.subZh || NO_SUB);
+      var key = r.themeCode + " " + r.themeZh + "｜" + subLabel;
+      if (!bySub[key]) { bySub[key] = 0; subOrder.push(key); }
+      bySub[key]++;
+    });
+    els.aggSubBody.innerHTML = subOrder.length ? subOrder.map(function (key) {
+      var parts = key.split("｜");
+      return "<tr><td>" + esc(parts[0]) + "</td><td class=\"wrap\">" + esc(parts[1]) + "</td><td class=\"num\">" + bySub[key] + "</td></tr>";
+    }).join("") + rowTotal(null, recs.length, 3)
+      : emptyRow(3);
+  }
+
+  function emptyRow(cols) {
+    return '<tr><td colspan="' + cols + '" style="text-align:center;color:var(--ink-faint);padding:20px;">尚無資料</td></tr>';
+  }
+  function rowTotal(mid, total, cols) {
+    if (cols === 3 && mid !== null) {
+      return "<tr style=\"font-weight:700;background:var(--surface-2);\"><td>合計</td><td class=\"num\">" + mid + "</td><td class=\"num\">" + total + "</td></tr>";
+    }
+    if (cols === 4) {
+      return "<tr style=\"font-weight:700;background:var(--surface-2);\"><td colspan=\"3\">合計</td><td class=\"num\">" + total + "</td></tr>";
+    }
+    return "<tr style=\"font-weight:700;background:var(--surface-2);\"><td colspan=\"2\">合計</td><td class=\"num\">" + total + "</td></tr>";
+  }
+
+  els.exportBtn.addEventListener("click", function () {
+    var recs = visibleRecords();
+    if (!recs.length) { showToast("尚無資料可匯出"); return; }
+    var headers = ["檢查年度","類型","主題代碼","主題(中文)","主題(英文)","子類別(中文)","其他說明",
+                   "事務所","受查公司代號","受查公司","缺失內容","金管會分類","承辦同仁","填表人","建立時間"];
+    var rows = recs.slice().reverse().map(function (r) {
+      return [r.year, r.type, r.themeCode, r.themeZh, r.themeEn, r.subZh, r.subOther,
+              r.firm, r.companyCode, r.company, r.content, r.localCategory, r.handler, r.filler, r.createdAt];
+    });
+    var csv = "﻿" + [headers].concat(rows).map(function (row) {
+      return row.map(function (v) {
+        var s = (v === undefined || v === null) ? "" : String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(",");
+    }).join("\r\n");
+
+    var yearTag = state.yearFilter === "all" ? "全年度" : (state.yearFilter + "年");
+    var filename = "缺失申報清單_" + yearTag + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+})();
+</script>
+</body>
+</html>

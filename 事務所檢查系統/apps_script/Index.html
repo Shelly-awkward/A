@@ -1,0 +1,122 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><title>個案檢查表</title>
+<style>
+:root{--b:#305496;--bg:#f6f7fb;--line:#d9dde7;--ok:#2e7d32;--bad:#c62828;--na:#666}
+body{margin:0;font:14px/1.5 "Microsoft JhengHei",system-ui,sans-serif;background:var(--bg);color:#222}
+header{background:var(--b);color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0}header select,header input{padding:4px 6px;border:0;border-radius:4px}
+nav{display:flex;gap:2px;padding:8px 16px 0;flex-wrap:wrap}nav button{border:1px solid var(--line);background:#fff;padding:7px 14px;border-radius:6px 6px 0 0;cursor:pointer}
+nav button.on{background:var(--b);color:#fff;border-color:var(--b)}
+main{padding:12px 16px 60px;max-width:1200px}.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.sec{background:#e9edf6;font-weight:bold;padding:6px 10px;border-radius:6px;margin:12px 0 6px}
+.item{display:grid;grid-template-columns:1fr 150px 220px;gap:10px;align-items:start;padding:8px 6px;border-bottom:1px solid #eee}
+.item .q{white-space:pre-wrap}.tog{display:flex;gap:4px}.tog button{flex:1;padding:5px 0;border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer}
+.tog button.V.on{background:var(--ok);color:#fff}.tog button.X.on{background:var(--bad);color:#fff}.tog button.NA.on{background:var(--na);color:#fff}
+input[type=text],textarea,select{width:100%;box-sizing:border-box;padding:5px 6px;border:1px solid var(--line);border-radius:5px;font:inherit}
+textarea{min-height:56px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.btn{background:var(--b);color:#fff;border:0;padding:7px 14px;border-radius:6px;cursor:pointer}.btn.sec2{background:#888}.btn.del{background:var(--bad)}
+.small{color:#666;font-size:12px}#toast{position:fixed;bottom:14px;right:14px;background:#333;color:#fff;padding:8px 14px;border-radius:6px;opacity:0;transition:.3s}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:5px;vertical-align:top;font-size:13px}th{background:#e9edf6}
+.prog{font-size:12px;color:#444;margin-left:auto}
+@media(max-width:800px){.item{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>個案檢查表</h1>
+ <span id="firmName" class="small"></span>
+ <label>填表人 <select id="user"></select></label>
+ <span class="prog" id="prog"></span></header>
+<nav><button data-t="chk2" class="on">檢查表二（個案）</button><button data-t="chk1">檢查表一（品質）</button><button data-t="aml">AML評量表</button><button data-t="fd">缺失</button><button data-t="set">設定／匯出</button></nav>
+<main>
+<section id="t-chk2">
+ <div class="card"><div class="grid"><label>個案 <select id="caseSel"></select></label></div>
+  <div class="grid" id="caseHead" style="margin-top:8px"></div>
+  <div style="margin-top:8px"><button class="btn" onclick="saveCaseHead()">儲存個案基本資料</button> <span class="small">底稿冊數、設立／上市櫃日期、主要營業項目用於檢查表二抬頭與三欄式對照表。</span></div></div>
+ <div class="card"><div class="item" style="font-weight:bold;border-bottom:2px solid var(--line)"><div>審閱內容</div><div>本局審查意見</div><div>會計師工作底稿索引</div></div><div id="chk2List"></div></div>
+</section>
+<section id="t-chk1" hidden><div class="card small">每個 □ 一列；「是／否／不適用」擇一，說明寫在右欄。程式產出時會把選中的 □ 改成 ■。</div><div class="card" id="chk1List"></div></section>
+<section id="t-aml" hidden><div class="card small">115年度AML現地檢查評量表。「綜合結論」「評估意見」列直接寫說明。</div><div class="card" id="amlList"></div></section>
+<section id="t-fd" hidden>
+ <div class="card"><h3 style="margin:0 0 8px">新增／編輯缺失</h3><input type="hidden" id="f_id">
+  <div class="grid">
+   <label>類型 <select id="f_type"><option>個案</option><option>品質</option></select></label>
+   <label>個案 <select id="f_case"><option value="">（品質缺失免填）</option></select></label>
+   <label>缺失分類 <select id="f_cat"></select></label>
+   <label>對應題號 <input type="text" id="f_q" placeholder="如 Q6"></label>
+   <label>IFIAR 主題（選填） <input type="text" id="f_theme"></label>
+   <label>違反或相關之準則或法規 <input type="text" id="f_law"></label>
+  </div>
+  <label>會計師所涉查核疏失（缺失內容） <textarea id="f_desc"></textarea></label>
+  <label>會計師說明 <textarea id="f_reply"></textarea></label>
+  <label>分析意見 <textarea id="f_opinion"></textarea></label>
+  <div style="margin-top:8px"><button class="btn" onclick="saveFinding()">儲存</button> <button class="btn sec2" onclick="clearFinding()">清空</button></div></div>
+ <div class="card"><table><thead><tr><th>類型</th><th>個案</th><th>分類</th><th>項次</th><th>缺失內容</th><th>法規</th><th>填表人</th><th></th></tr></thead><tbody id="fdList"></tbody></table></div>
+</section>
+<section id="t-set" hidden>
+ <div class="card"><h3 style="margin:0 0 8px">事務所</h3><div class="grid" id="firmForm"></div><div style="margin-top:8px"><button class="btn" onclick="saveFirm()">儲存</button></div></div>
+ <div class="card"><h3 style="margin:0 0 8px">匯入個案</h3><p class="small">開 1_選案.bat 產出的選案工作表「建議選案」，整列（含標題列）複製後貼在下方。</p><textarea id="impTxt" style="min-height:90px"></textarea><div style="margin-top:6px"><button class="btn" onclick="importCases()">匯入</button></div></div>
+ <div class="card"><h3 style="margin:0 0 8px">匯出給產出程式</h3><p class="small">匯出整本試算表為 xlsx，下載後放到 事務所檢查系統\input\，雙擊 3_產出檢查表.bat。</p><button class="btn" onclick="exportXlsx()">匯出 xlsx</button> <span id="expOut"></span>
+  <p style="margin-top:10px"><button class="btn sec2" onclick="syncIntake()">同步缺失到缺失申報站</button> <span id="syncOut" class="small"></span></p></div>
+</section>
+</main><div id="toast"></div>
+<script>
+var S=null, cur=null;
+function $(id){return document.getElementById(id)}
+function toast(m){var t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(function(){t.style.opacity=0},1600)}
+function user(){return $('user').value}
+function run(fn,args,cb){google.script.run.withSuccessHandler(function(r){toast('已儲存');cb&&cb(r)}).withFailureHandler(function(e){alert('失敗：'+e.message)})[fn].apply(null,args)}
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');['chk2','chk1','aml','fd','set'].forEach(function(t){$('t-'+t).hidden=(t!==b.dataset.t)})}});
+function load(){google.script.run.withSuccessHandler(function(s){S=s;render()}).withFailureHandler(function(e){alert(e.message)}).getState()}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function render(){
+ $('firmName').textContent=(S.firm['檢查年度']||'')+'年度 '+(S.firm['事務所名稱']||'（請至設定填事務所）');
+ var u=$('user');u.innerHTML=S.people.map(function(p){return'<option>'+esc(p)+'</option>'}).join('')||'<option>（請在試算表「人員」工作表加姓名）</option>';
+ try{var lu=localStorage.getItem('chk.user');if(lu)u.value=lu}catch(e){} u.onchange=function(){try{localStorage.setItem('chk.user',u.value)}catch(e){}};
+ var cs=$('caseSel');cs.innerHTML=S.cases.map(function(c){return'<option value="'+esc(c['公司代號'])+'">'+esc(c['公司代號'])+' '+esc(c['公司簡稱'])+'</option>'}).join('');
+ cs.onchange=renderCase; if(!cur&&S.cases.length)cur=S.cases[0]['公司代號']; if(cur)cs.value=cur; renderCase();
+ renderChk1(); renderAml(); renderFd(); renderSet();
+}
+function renderCase(){cur=$('caseSel').value; var c=S.cases.filter(function(x){return String(x['公司代號'])===String(cur)})[0]; if(!c){$('caseHead').innerHTML='<span class="small">尚無個案，請至「設定／匯出」匯入。</span>';$('chk2List').innerHTML='';return}
+ var f=['公司全名','市場別','會計師A','會計師B','工作底稿冊數','電子底稿冊數','設立日期','上市櫃日期','主要營業項目','主查','覆核者','覆核日期'];
+ $('caseHead').innerHTML=f.map(function(k){return'<label>'+k+' <input type="text" id="ch_'+k+'" value="'+esc(c[k])+'"></label>'}).join('');
+ var ans={};S.chk2.filter(function(r){return String(r['公司代號'])===String(cur)}).forEach(function(r){ans[r['題號']]=r});
+ var html='',sec='',done=0;
+ S.chk2Items.forEach(function(it){ if(it.sec!==sec){sec=it.sec;html+='<div class="sec">'+esc(sec)+'</div>'}
+  var a=ans[it.q]||{},op=a['本局審查意見(V/✗/NA)']||''; if(op)done++;
+  html+='<div class="item"><div class="q"><b>'+it.q+'</b> '+esc(it.text)+'</div><div class="tog">'+['V','✗','NA'].map(function(o){var cls=o==='V'?'V':o==='✗'?'X':'NA';return'<button class="'+cls+(op===o?' on':'')+'" onclick="setOp(\''+it.q+'\',\''+o+'\',this)">'+o+'</button>'}).join('')+'</div><div><input type="text" value="'+esc(a['會計師工作底稿索引'])+'" onblur="setIdx(\''+it.q+'\',this.value)" placeholder="底稿索引">'+(op==='✗'?'<div class="small"><a href="#" onclick="newFd(\''+it.q+'\');return false">→ 到「缺失」新增本題缺失</a></div>':'')+'</div></div>'});
+ $('chk2List').innerHTML=html; $('prog').textContent='本案已填 '+done+'/'+S.chk2Items.length+' 題';
+}
+function ansOf(q){var r=S.chk2.filter(function(x){return String(x['公司代號'])===String(cur)&&x['題號']===q})[0];if(!r){r={'公司代號':cur,'題號':q};S.chk2.push(r)}return r}
+function setOp(q,o,btn){var r=ansOf(q);r['本局審查意見(V/✗/NA)']=(r['本局審查意見(V/✗/NA)']===o?'':o);run('saveChk2',[cur,q,r['本局審查意見(V/✗/NA)'],r['會計師工作底稿索引']||'',r['備註']||'',user()],renderCase)}
+function setIdx(q,v){var r=ansOf(q);if((r['會計師工作底稿索引']||'')===v)return;r['會計師工作底稿索引']=v;run('saveChk2',[cur,q,r['本局審查意見(V/✗/NA)']||'',v,r['備註']||'',user()])}
+function saveCaseHead(){var c=S.cases.filter(function(x){return String(x['公司代號'])===String(cur)})[0];var rec={'公司代號':cur};document.querySelectorAll('#caseHead input').forEach(function(i){var k=i.id.slice(3);rec[k]=i.value;c[k]=i.value});run('saveCase',[rec])}
+function renderChk1(){var html='',sec='';S.chk1.forEach(function(r){if(r['章節']!==sec){sec=r['章節'];html+='<div class="sec">'+esc(sec)+'</div>'}
+ var k=r['列序']+'_'+r['子項'],v=r['是']?'是':r['否']?'否':r['不適用']?'不適用':'';
+ html+='<div class="item"><div class="q">'+esc(r['檢查項目'])+'</div><div class="tog">'+['是','否','不適用'].map(function(o){var cls=o==='是'?'V':o==='否'?'X':'NA';return'<button class="'+cls+(v===o?' on':'')+'" onclick="setChk1('+r['列序']+','+r['子項']+',\''+o+'\')">'+o+'</button>'}).join('')+'</div><div><textarea placeholder="說明及發現" onblur="setChk1Txt('+r['列序']+','+r['子項']+',\'說明及發現\',this.value)">'+esc(r['說明及發現'])+'</textarea><input type="text" placeholder="附件" value="'+esc(r['附件'])+'" onblur="setChk1Txt('+r['列序']+','+r['子項']+',\'附件\',this.value)"></div></div>'});
+ $('chk1List').innerHTML=html}
+function chk1Row(row,sub){return S.chk1.filter(function(x){return Number(x['列序'])===row&&Number(x['子項'])===sub})[0]}
+function setChk1(row,sub,o){var r=chk1Row(row,sub);var was=r[o];r['是']=r['否']=r['不適用']='';if(!was)r[o]='V';run('saveChk1',[row,sub,{'是':r['是'],'否':r['否'],'不適用':r['不適用'],'說明及發現':r['說明及發現']||'','附件':r['附件']||''},user()],renderChk1)}
+function setChk1Txt(row,sub,k,v){var r=chk1Row(row,sub);if((r[k]||'')===v)return;r[k]=v;run('saveChk1',[row,sub,{'是':r['是']||'','否':r['否']||'','不適用':r['不適用']||'','說明及發現':r['說明及發現']||'','附件':r['附件']||''},user()])}
+function renderAml(){var html='';S.aml.forEach(function(r){var k=r['類型'],v=r['正常']?'正常':r['異常']?'異常':'';
+ if(k!=='項目'){html+='<div class="sec">'+esc(k)+'</div><div class="item" style="grid-template-columns:1fr"><textarea onblur="setAmlTxt('+r['表序']+','+r['列序']+',this.value)">'+esc(r['說明'])+'</textarea></div>';return}
+ html+='<div class="item"><div class="q">'+esc(r['檢查項目'])+'</div><div class="tog">'+['正常','異常'].map(function(o){var cls=o==='正常'?'V':'X';return'<button class="'+cls+(v===o?' on':'')+'" onclick="setAml('+r['表序']+','+r['列序']+',\''+o+'\')">'+o+'</button>'}).join('')+'</div><div><textarea placeholder="說明" onblur="setAmlTxt('+r['表序']+','+r['列序']+',this.value)">'+esc(r['說明'])+'</textarea></div></div>'});
+ $('amlList').innerHTML=html}
+function amlRow(t,r){return S.aml.filter(function(x){return Number(x['表序'])===t&&Number(x['列序'])===r})[0]}
+function setAml(t,ri,o){var r=amlRow(t,ri);var was=r[o];r['正常']=r['異常']='';if(!was)r[o]='V';run('saveAml',[t,ri,{'正常':r['正常'],'異常':r['異常'],'說明':r['說明']||''},user()],renderAml)}
+function setAmlTxt(t,ri,v){var r=amlRow(t,ri);if((r['說明']||'')===v)return;r['說明']=v;run('saveAml',[t,ri,{'正常':r['正常']||'','異常':r['異常']||'','說明':v},user()])}
+function renderFd(){var fc=$('f_case');fc.innerHTML='<option value="">（品質缺失免填）</option>'+S.cases.map(function(c){return'<option value="'+esc(c['公司代號'])+'">'+esc(c['公司代號'])+' '+esc(c['公司簡稱'])+'</option>'}).join('');
+ $('f_type').onchange=fillCats;fillCats();
+ $('fdList').innerHTML=S.findings.map(function(f){return'<tr><td>'+esc(f['類型(個案/品質)'])+'</td><td>'+esc(f['公司代號'])+' '+esc(f['公司簡稱'])+'</td><td>'+esc(f['缺失分類'])+'</td><td>'+esc(f['項次'])+'</td><td>'+esc(f['會計師所涉查核疏失'])+'</td><td>'+esc(f['違反或相關之準則或法規'])+'</td><td>'+esc(f['填表人'])+'</td><td><button class="btn sec2" onclick="editFd(\''+esc(f['id'])+'\')">編輯</button> <button class="btn del" onclick="delFd(\''+esc(f['id'])+'\')">刪</button></td></tr>'}).join('')}
+function fillCats(){var t=$('f_type').value,cats=t==='品質'?S.qmCats:S.caseCats;$('f_cat').innerHTML=cats.map(function(c){return'<option>'+esc(c)+'</option>'}).join('')}
+function newFd(q){$('f_type').value='個案';fillCats();$('f_case').value=cur;$('f_q').value=q;document.querySelector('nav button[data-t=fd]').click()}
+function clearFinding(){['f_id','f_q','f_theme','f_law','f_desc','f_reply','f_opinion'].forEach(function(i){$(i).value=''})}
+function saveFinding(){var t=$('f_type').value,code=$('f_case').value,c=S.cases.filter(function(x){return String(x['公司代號'])===code})[0];
+ if(t==='個案'&&!code)return alert('個案缺失請選個案');if(!$('f_desc').value.trim())return alert('請填缺失內容');
+ var rec={'類型(個案/品質)':t,'公司代號':t==='個案'?code:'','公司簡稱':t==='個案'&&c?c['公司簡稱']:'','缺失分類':$('f_cat').value,'會計師所涉查核疏失':$('f_desc').value,'會計師說明':$('f_reply').value,'分析意見':$('f_opinion').value,'違反或相關之準則或法規':$('f_law').value,'對應題號':$('f_q').value,'IFIAR主題(選填)':$('f_theme').value,'id':$('f_id').value||''};
+ run('saveFinding',[rec,user()],function(){clearFinding();load()})}
+function editFd(id){var f=S.findings.filter(function(x){return String(x['id'])===id})[0];if(!f)return;$('f_id').value=id;$('f_type').value=f['類型(個案/品質)'];fillCats();$('f_case').value=f['公司代號']||'';$('f_cat').value=f['缺失分類'];$('f_q').value=f['對應題號']||'';$('f_theme').value=f['IFIAR主題(選填)']||'';$('f_law').value=f['違反或相關之準則或法規']||'';$('f_desc').value=f['會計師所涉查核疏失']||'';$('f_reply').value=f['會計師說明']||'';$('f_opinion').value=f['分析意見']||'';window.scrollTo(0,0)}
+function delFd(id){if(!confirm('確定刪除？'))return;run('deleteFinding',[id],load)}
+function renderSet(){var f=['事務所名稱','檢查年度','財報年度','檢查者','檢查日期'];$('firmForm').innerHTML=f.map(function(k){return'<label>'+k+' <input type="text" id="fm_'+k+'" value="'+esc(S.firm[k])+'"></label>'}).join('')}
+function saveFirm(){var ks=['事務所名稱','檢查年度','財報年度','檢查者','檢查日期'],i=0;(function next(){if(i>=ks.length){load();return}var k=ks[i++];google.script.run.withSuccessHandler(next).saveFirm(k,$('fm_'+k).value)})()}
+function importCases(){var t=$('impTxt').value;if(!t.trim())return;run('importCases',[t,S.firm['事務所名稱']||''],function(n){alert('匯入 '+n+' 案');$('impTxt').value='';load()})}
+function exportXlsx(){$('expOut').textContent='匯出中…';google.script.run.withSuccessHandler(function(r){$('expOut').innerHTML='已存到雲端硬碟「檢查輸入匯出」：<a target="_blank" href="'+r.url+'">'+esc(r.name)+'</a>'}).withFailureHandler(function(e){$('expOut').textContent='失敗：'+e.message}).exportXlsx()}
+function syncIntake(){google.script.run.withSuccessHandler(function(m){$('syncOut').textContent=m}).withFailureHandler(function(e){$('syncOut').textContent=e.message}).syncToIntake()}
+load();
+</script></body></html>
