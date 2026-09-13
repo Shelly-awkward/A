@@ -51,7 +51,7 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);pad
 </section>
 <section id="t-set" hidden>
  <div class="card"><h3 style="margin:0 0 8px">事務所</h3><div class="grid" id="firmForm"></div><div style="margin-top:8px"><button class="btn" onclick="saveFirm()">儲存</button></div></div>
- <div class="card"><h3 style="margin:0 0 8px">匯入個案</h3><p class="small">開 1_選案.bat 產出的選案工作表「建議選案」，整列（含標題列）複製後貼在下方。</p><textarea id="impTxt" style="min-height:90px"></textarea><div style="margin-top:6px"><button class="btn" onclick="importCases()">匯入</button></div></div>
+ <div class="card"><h3 style="margin:0 0 8px">匯入個案</h3><p class="small">開 1_選案.bat 產出的選案工作表「建議選案」，整列（含標題列）複製後貼在下方。</p><textarea id="impTxt" style="min-height:90px"></textarea><div style="margin-top:6px"><button class="btn" id="impBtn" onclick="importCases()">匯入</button> <span id="impOut" class="small"></span></div></div>
  <div class="card"><h3 style="margin:0 0 8px">匯出給產出程式</h3><p class="small">匯出整本試算表為 xlsx，下載後放到 事務所檢查系統\input\，雙擊 3_產出檢查表.bat。</p><button class="btn" onclick="exportXlsx()">匯出 xlsx</button> <span id="expOut"></span>
   <p style="margin-top:10px"><button class="btn sec2" onclick="syncIntake()">同步缺失到缺失申報站</button> <span id="syncOut" class="small"></span></p></div>
 </section>
@@ -61,7 +61,7 @@ var S=null, cur=null;
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(function(){t.style.opacity=0},1600)}
 function user(){return $('user').value}
-function run(fn,args,cb){google.script.run.withSuccessHandler(function(r){toast('已儲存');cb&&cb(r)}).withFailureHandler(function(e){alert('失敗：'+e.message)})[fn].apply(null,args)}
+function run(fn,args,cb){var r=google.script.run.withSuccessHandler(function(x){toast('已儲存');cb&&cb(x)}).withFailureHandler(function(e){alert('失敗：'+e.message)});r[fn].apply(r,args)}
 document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');['chk2','chk1','aml','fd','set'].forEach(function(t){$('t-'+t).hidden=(t!==b.dataset.t)})}});
 function load(){google.script.run.withSuccessHandler(function(s){S=s;render()}).withFailureHandler(function(e){alert(e.message)}).getState()}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -115,7 +115,7 @@ function editFd(id){var f=S.findings.filter(function(x){return String(x['id'])==
 function delFd(id){if(!confirm('確定刪除？'))return;run('deleteFinding',[id],load)}
 function renderSet(){var f=['事務所名稱','檢查年度','財報年度','檢查者','檢查日期'];$('firmForm').innerHTML=f.map(function(k){return'<label>'+k+' <input type="text" id="fm_'+k+'" value="'+esc(S.firm[k])+'"></label>'}).join('')}
 function saveFirm(){var ks=['事務所名稱','檢查年度','財報年度','檢查者','檢查日期'],i=0;(function next(){if(i>=ks.length){load();return}var k=ks[i++];google.script.run.withSuccessHandler(next).saveFirm(k,$('fm_'+k).value)})()}
-function importCases(){var t=$('impTxt').value;if(!t.trim())return;run('importCases',[t,S.firm['事務所名稱']||''],function(n){alert('匯入 '+n+' 案');$('impTxt').value='';load()})}
+function importCases(){var t=$('impTxt').value;if(!t.trim()){$('impOut').textContent='請先把「建議選案」貼進上方框內';return}var sep=/\t/.test(t)?/\t/:/,|\s{2,}/;var lines=t.split(/\r?\n/).map(function(l){return l.split(sep).map(function(x){return x.trim()})}).filter(function(a){return a.length>=2});var h=lines[0],ix={};['公司代號','公司簡稱','市場別','承辦人','會計師A','會計師B'].forEach(function(k){ix[k]=h.indexOf(k)});var body=ix['公司代號']>=0?lines.slice(1):lines;if(ix['公司代號']<0){ix={'公司代號':0,'公司簡稱':1,'市場別':2,'承辦人':-1,'會計師A':3,'會計師B':4}}var compact=['公司代號','公司簡稱','市場別','承辦人','會計師A','會計師B'].join('\t')+'\n'+body.map(function(a){return ['公司代號','公司簡稱','市場別','承辦人','會計師A','會計師B'].map(function(k){return ix[k]>=0?(a[ix[k]]||''):''}).join('\t')}).join('\n');$('impBtn').disabled=true;$('impOut').textContent='匯入中…請稍候（'+body.length+' 列）';var timer=setTimeout(function(){$('impOut').textContent+='　仍在等待伺服器回應，若超過 1 分鐘請重新整理頁面再看個案是否已進來'},30000);var r=google.script.run.withSuccessHandler(function(n){clearTimeout(timer);$('impBtn').disabled=false;$('impOut').textContent='已匯入 '+n+' 案'+(n?'，請到「檢查表二（個案）」分頁':'（代號重複或欄位未辨識）');if(n){$('impTxt').value='';load()}}).withFailureHandler(function(e){clearTimeout(timer);$('impBtn').disabled=false;$('impOut').textContent='失敗：'+e.message});r.importCases(compact,S.firm['事務所名稱']||'')}
 function exportXlsx(){$('expOut').textContent='匯出中…';google.script.run.withSuccessHandler(function(r){$('expOut').innerHTML='已存到雲端硬碟「檢查輸入匯出」：<a target="_blank" href="'+r.url+'">'+esc(r.name)+'</a>'}).withFailureHandler(function(e){$('expOut').textContent='失敗：'+e.message}).exportXlsx()}
 function syncIntake(){google.script.run.withSuccessHandler(function(m){$('syncOut').textContent=m}).withFailureHandler(function(e){$('syncOut').textContent=e.message}).syncToIntake()}
 load();

@@ -12,7 +12,15 @@ var SHEETS = {
 };
 var NAMES = { cases:'個案主檔', chk2:'檢查表二作答', chk1:'檢查表一作答', aml:'AML作答', findings:'缺失', firm:'事務所' };
 
-function doGet() { return HtmlService.createHtmlOutputFromFile('Index').setTitle('個案檢查表').addMetaTag('viewport','width=device-width, initial-scale=1'); }
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.action) {  // 診斷／程式介接模式：?action=state 回傳狀態 JSON；?action=import&tsv=...&firm=... 匯入個案
+    var out; try { out = p.action === 'state' ? getState() : p.action === 'import' ? { added: importCases(p.tsv || '', p.firm || '') } : { error: 'unknown action' }; }
+    catch (err) { out = { error: String(err), stack: err && err.stack }; }
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  }
+  return HtmlService.createHtmlOutputFromFile('Index').setTitle('個案檢查表').addMetaTag('viewport','width=device-width, initial-scale=1');
+}
 
 function ss() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function sh(key) {
@@ -47,6 +55,7 @@ function setup() {
 }
 
 function getState() {
+  if (!ss().getSheetByName('題庫二')) setup();  // 第一次開表單即自動建工作表、灌題庫（免手動執行 setup）
   var firm = {}; rows('firm').forEach(function (r) { firm[r['項目']] = r['值']; });
   var people = rows_('人員').map(function (r) { return r[0]; }).filter(String);
   return { firm: firm, cases: rows('cases'), chk2Items: SEED.chk2, chk2: rows('chk2'), chk1: rows('chk1'), aml: rows('aml'),
@@ -54,20 +63,28 @@ function getState() {
 }
 function rows_(name) { var s = ss().getSheetByName(name); if (!s || s.getLastRow() < 2) return []; return s.getRange(2, 1, s.getLastRow() - 1, s.getLastColumn()).getValues(); }
 
-/** 貼上選案工作表「建議選案」的列（Tab 分隔，欄序：代號 簡稱 市場別 會計師A 會計師B 或整列貼上皆可，程式找欄）。 */
+/** 貼上選案工作表「建議選案」的列（Tab 分隔，欄序：代號 簡稱 市場別 會計師A 會計師B 或整列貼上皆可，程式找欄）。
+ *  批次寫入：個案主檔與檢查表二作答各只 setValues 一次，15 案約數秒完成。 */
 function importCases(tsv, firmName) {
-  var lines = tsv.split(/\r?\n/).map(function (l) { return l.split('\t'); }).filter(function (a) { return a.length >= 2; });
-  var hdr = lines[0].map(String); var iCode = hdr.indexOf('公司代號'), iName = hdr.indexOf('公司簡稱'), iMkt = hdr.indexOf('市場別'), iA = hdr.indexOf('會計師A'), iB = hdr.indexOf('會計師B'), iOff = hdr.indexOf('承辦人');
+  var sep = /\t/.test(tsv) ? /\t/ : /,|\s{2,}/;   // 貼上內容若無 tab（被轉成空白），退而以逗號或連續空白切欄
+  var lines = tsv.split(/\r?\n/).map(function (l) { return l.split(sep).map(function (x) { return String(x).trim(); }); }).filter(function (a) { return a.length >= 2; });
+  if (!lines.length) return 0;
+  var hdr = lines[0]; var iCode = hdr.indexOf('公司代號'), iName = hdr.indexOf('公司簡稱'), iMkt = hdr.indexOf('市場別'), iA = hdr.indexOf('會計師A'), iB = hdr.indexOf('會計師B'), iOff = hdr.indexOf('承辦人');
   var body = iCode >= 0 ? lines.slice(1) : lines; if (iCode < 0) { iCode = 0; iName = 1; iMkt = 2; iA = 3; iB = 4; iOff = -1; }
-  var existing = {}; rows('cases').forEach(function (c) { existing[String(c['公司代號'])] = 1; });
-  var added = 0;
-  body.forEach(function (a) {
-    var code = String(a[iCode] || '').trim(); if (!code || existing[code] || !/^\d+$/.test(code)) return;
-    upsert('cases', ['公司代號'], { '公司代號': code, '公司簡稱': a[iName] || '', '市場別': a[iMkt] || '', '事務所': firmName || '', '會計師A': a[iA] || '', '會計師B': a[iB] || '', '主查': iOff >= 0 ? a[iOff] || '' : '' });
-    var s = sh('chk2'); s.getRange(s.getLastRow() + 1, 1, SEED.chk2.length, 5).setValues(SEED.chk2.map(function (x) { return [code, a[iName] || '', x.q, x.sec, x.text.split('\n')[0].slice(0, 40)]; }));
-    added++;
+  return withLock(function () {
+    var existing = {}; rows('cases').forEach(function (c) { existing[String(c['公司代號'])] = 1; });
+    var caseRows = [], chk2Rows = [], H = SHEETS.cases;
+    body.forEach(function (a) {
+      var code = String(a[iCode] || '').trim(); if (!code || existing[code] || !/^\d+$/.test(code)) return;
+      existing[code] = 1;
+      var rec = { '公司代號': code, '公司簡稱': a[iName] || '', '市場別': a[iMkt] || '', '事務所': firmName || '', '會計師A': a[iA] || '', '會計師B': a[iB] || '', '主查': iOff >= 0 ? a[iOff] || '' : '' };
+      caseRows.push(H.map(function (k) { return rec[k] !== undefined ? rec[k] : ''; }));
+      SEED.chk2.forEach(function (x) { chk2Rows.push([code, a[iName] || '', x.q, x.sec, x.text.split('\n')[0].slice(0, 40)]); });
+    });
+    if (caseRows.length) { var sc = sh('cases'); sc.getRange(sc.getLastRow() + 1, 1, caseRows.length, H.length).setValues(caseRows); }
+    if (chk2Rows.length) { var s2 = sh('chk2'); s2.getRange(s2.getLastRow() + 1, 1, chk2Rows.length, 5).setValues(chk2Rows); }
+    return caseRows.length;
   });
-  return added;
 }
 function saveCase(rec) { return upsert('cases', ['公司代號'], rec); }
 function saveChk2(code, q, opinion, idx, note, user) { return upsert('chk2', ['公司代號', '題號'], { '公司代號': code, '題號': q, '本局審查意見(V/✗/NA)': opinion, '會計師工作底稿索引': idx, '備註': note, '更新者': user || '', '更新時間': new Date() }); }

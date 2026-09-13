@@ -14,7 +14,9 @@
 - `apps_script/` 多人網頁表單（Google Apps Script，部署在共用帳號 accsfb01 的試算表）；`apps_script_缺失申報站/` 缺失申報站
 - `input/` 每年更新的資料與 `選案參數_*.xlsx`（所有規則數字都在這裡，不寫死在程式）
 - `templates/<年度>/` 原始 Word/Excel 範本；`output/` 產出（不進版控）
-- 一鍵執行：Windows `*.bat`，Mac `*.command`（`bin/_env.sh` 共用）
+- 一鍵執行：Windows `*.bat`，Mac `*.command`（`bin/_env.sh` 共用，Mac 端自動建 `.venv`）
+- `前置程式/` 產生 input/ 各檔的來源程式（make_selection_list、永續確信比對七支）＋SOP；含 Windows 絕對路徑
+- 表單部署：Mac 上用 clasp（`apps_script/.clasp.json` 不進版；部署網址與 deploymentId 見 進度.md）；`?action=state|import` 為診斷／程式介接介面
 
 ## 工作規則
 - 規則調整優先改 `input/選案參數_*.xlsx`，不改程式；只有新增規則型態才動 `select_cases.py`。
